@@ -1,0 +1,58 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2007 Free Software Foundation, Inc.
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+                            Preamble
+
+The GNU Affero General Public License is a free, copyleft license for
+software and other kinds of works.
+
+The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works. By contrast,
+our General Public Licenses are intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.
+
+When we speak of free software, we are referring to freedom, not
+price. Our General Public Licenses are designed to make sure that you
+have the freedom to distribute copies of free software (and charge for
+them if you wish), that you receive source code or can get it if you
+want it, that you can change the software or use pieces of it in new
+free programs, and that you know you can do these things.
+
+[Full license text continues...]
+
+For the complete AGPL-3.0 license text, see:
+https://www.gnu.org/licenses/agpl-3.0.txt
+
+---
+
+ADDITIONAL AGPL-3.0 TERMS FOR chatLibre
+
+As an exception to the AGPL-3.0 license, chatLibre additionally permits:
+
+1. Federation: Running KeyForge servers that communicate with each other
+   using the KeyForge federation protocol does not constitute "conveying"
+   under Section 4 of the AGPL-3.0 license, provided that such
+   communication is limited to:
+   - Encrypted message relay
+   - Server capability discovery
+   - Federation handshake (public key exchange only)
+
+2. API Access: Accessing a KeyForge server through its public API for
+   the purpose of establishing E2EE communication does not constitute
+   "conveying" when:
+   - All message content is end-to-end encrypted before transmission
+   - The client implements the KeyForge E2EE specification
+   - The server only receives and relays encrypted blobs
+
+This exception does not permit:
+- Storing or accessing unencrypted user data on servers
+- Analytics or telemetry collection
+- Any form of data harvesting or surveillance
+
+If you have questions about these terms, please open an issue.

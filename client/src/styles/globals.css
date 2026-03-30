@@ -1,0 +1,240 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=gg-sans:wght@400;500;600;700&display=swap');
+
+:root {
+  font-family: 'gg-sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #d4d7dc;
+  background-color: #313338;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #202225;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2f3136;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(88, 166, 255, 0.3);
+}
+
+input, textarea, button {
+  font-family: inherit;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #202225;
+  border-radius: 2px;
+}
+
+@layer utilities {
+  .bg-discord-bg {
+    background-color: #313338;
+  }
+
+  .bg-discord-bg-secondary {
+    background-color: #2b2d31;
+  }
+
+  .bg-discord-hover {
+    background-color: #35373c;
+  }
+
+  .bg-discord-border {
+    background-color: #3f4147;
+  }
+
+  .bg-discord-voice-active {
+    background-color: #23a559;
+  }
+
+  .bg-discord-notification {
+    background-color: #f04747;
+  }
+
+  .text-discord-notification {
+    color: #f04747;
+  }
+
+  .border-discord-border {
+    border-color: #3f4147;
+  }
+
+  .border-discord-hover {
+    border-color: #d4d7dc;
+  }
+
+  .text-discord-muted {
+    color: #6d6f78;
+  }
+
+  .text-discord-interactive {
+    color: #b5bac1;
+  }
+}
+
+.discord-input {
+  @apply w-full px-4 py-3 bg-[#383b41] border border-[#18191c] rounded-md text-white placeholder-[#6d6f78] focus:outline-none focus:border-[#5865f2] transition-colors;
+}
+
+.discord-btn-primary {
+  @apply w-full py-3 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.discord-btn-secondary {
+  @apply py-2 px-4 bg-[#4e5058] hover:bg-[#5d6066] text-white rounded-md font-medium transition-colors;
+}
+
+.discord-modal {
+  @apply bg-[#313338] rounded-lg shadow-2xl border border-[#27272a];
+}
+
+.discord-sidebar {
+  @apply bg-[#1e1f22];
+}
+
+.discord-header {
+  @apply h-12 px-4 flex items-center justify-between border-b border-[#18191c] shadow-sm;
+}
+
+.discord-channel-text {
+  @apply text-[#6d6f78] hover:bg-[#f2f3f5] hover:text-[#2b2d31];
+}
+
+.discord-channel-active {
+  @apply bg-[#404249] text-white;
+}
+
+.discord-voice-active {
+  @apply bg-[#23a559] text-white;
+}
+
+.discord-category {
+  @apply text-[#949ba4] uppercase text-xs font-semibold tracking-wide;
+}
+
+.discord-user-panel {
+  @apply h-[52px] bg-[#232428] flex items-center px-2 gap-2;
+}
+
+.discord-tooltip {
+  @apply absolute left-full ml-4 top-1/2 -translate-y-1/2 z-50 bg-[#18191c] text-white px-3 py-2 rounded-md text-sm shadow-xl whitespace-nowrap;
+}
+
+.discord-context-menu {
+  @apply fixed z-50 bg-[#18191c] rounded-md shadow-2xl border border-[#27272a] py-1 min-w-[200px];
+}
+
+.discord-context-item {
+  @apply w-full px-3 py-1.5 text-sm text-left flex items-center gap-3 hover:bg-[#2b2d31] transition-colors;
+}
+
+.discord-context-danger {
+  @apply text-[#f04747];
+}
+
+.encryption-badge {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#a371f7]/20 text-[#a371f7] text-xs;
+}
+
+.discord-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.discord-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.discord-scrollbar::-webkit-scrollbar-thumb {
+  background: #2f3136;
+  border-radius: 2px;
+}
+
+.discord-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #36393f;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
