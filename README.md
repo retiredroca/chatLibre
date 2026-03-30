@@ -34,8 +34,9 @@ chatLibre is a complete open-source alternative to centralized chat platforms. B
 - Cross-server channel membership
 - Server discovery by URL + public key verification
 
-### Voice (In Development)
-- Low-latency voice channels (WebRTC planned)
+### Voice
+- Low-latency voice channels via WebRTC
+- Mute/deafen controls
 - Screen sharing support
 - Cross-server voice communication
 
@@ -162,10 +163,10 @@ chatlibre/
 | WebSocket handlers | ✅ Complete |
 | Client UI | ✅ Complete |
 | Discord template import | ✅ Complete |
-| E2EE messaging | 🔄 In Progress |
-| Voice channels | 🔄 Planned |
-| Federation | 🔄 Planned |
-| File encryption | 🔄 Planned |
+| E2EE messaging | ✅ Complete |
+| Voice channels | ✅ Complete |
+| Federation | ✅ Complete |
+| File encryption | ✅ Complete |
 
 ---
 
@@ -210,6 +211,6 @@ AGPL-3.0 or later — see [LICENSE](LICENSE)
 
 ## Status
 
-**Active Development** — Building foundation components
+**Active Development** — Core features complete
 
-The project is in active development. Core server and client structure are complete. E2EE messaging, voice channels, and federation are planned.
+All core features are implemented. The project includes E2EE messaging with Double Ratchet encryption, file encryption, WebRTC voice channels, and federation protocol support. Testing and integration work continues.
