@@ -22,6 +22,27 @@ export interface EncryptedFile {
   keyCiphertext: string;
 }
 
+const FILE_KEY_CONTEXT = 'chatlibre-file-encryption';
+
+function generateSecureId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function deriveMasterKey(publicKey: string): Promise<CryptoKey> {
+  const keyMaterial = new TextEncoder().encode(publicKey);
+  const salt = new TextEncoder().encode(FILE_KEY_CONTEXT);
+  const keyData = new Uint8Array([...keyMaterial, ...salt]);
+  const hash = await crypto.subtle.digest('SHA-256', keyData);
+  return crypto.subtle.importKey(
+    'raw',
+    hash,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
 class CryptoService {
   async encryptMessage(plaintext: string, _recipientPublicKey: string): Promise<EncryptedPayload> {
     const identity = useIdentityStore.getState();
@@ -77,6 +98,11 @@ class CryptoService {
   }
 
   async encryptFile(fileData: ArrayBuffer, fileName: string, mimeType: string): Promise<EncryptedFile> {
+    const identity = useIdentityStore.getState();
+    if (!identity.publicKey) {
+      throw new Error('No identity available');
+    }
+
     const fileKey = await crypto.subtle.generateKey(
       { name: 'AES-GCM', length: 256 },
       true,
@@ -92,13 +118,7 @@ class CryptoService {
 
     const exportedKey = await crypto.subtle.exportKey('raw', fileKey);
     const keyNonce = crypto.getRandomValues(new Uint8Array(12));
-    const masterKey = await crypto.subtle.importKey(
-      'raw',
-      new Uint8Array(32).fill(0),
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt']
-    );
+    const masterKey = await deriveMasterKey(identity.publicKey);
     const keyCiphertext = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: keyNonce },
       masterKey,
@@ -122,17 +142,16 @@ class CryptoService {
   }
 
   async decryptFile(encryptedFile: EncryptedFile): Promise<ArrayBuffer> {
+    const identity = useIdentityStore.getState();
+    if (!identity.publicKey) {
+      throw new Error('No identity available');
+    }
+
     const ciphertext = Uint8Array.from(atob(encryptedFile.encryptedBlob), c => c.charCodeAt(0));
     const keyNonce = Uint8Array.from(atob(encryptedFile.keyNonce), c => c.charCodeAt(0));
     const keyCiphertext = Uint8Array.from(atob(encryptedFile.keyCiphertext), c => c.charCodeAt(0));
 
-    const masterKey = await crypto.subtle.importKey(
-      'raw',
-      new Uint8Array(32).fill(0),
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['decrypt']
-    );
+    const masterKey = await deriveMasterKey(identity.publicKey);
     const exportedKey = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: keyNonce },
       masterKey,
@@ -155,7 +174,7 @@ class CryptoService {
   }
 
   generateMessageId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    return `${Date.now()}-${generateSecureId()}`;
   }
 }
 

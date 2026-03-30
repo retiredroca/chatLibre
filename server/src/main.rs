@@ -24,7 +24,7 @@ mod storage;
 
 use crypto::identity::ServerIdentity;
 use protocol::{messages::*, validate::validate_message};
-use storage::{channels::ChannelStore, federation::FederationStore, server_meta::ServerMetaStore};
+use storage::{channels::ChannelStore, federation::FederationStore, server_meta::ServerMetaStore, rate_limit::RateLimiters};
 
 #[derive(Clone)]
 struct AppState {
@@ -34,6 +34,7 @@ struct AppState {
     federation: Arc<Mutex<FederationStore>>,
     meta: Arc<Mutex<ServerMetaStore>>,
     tx: broadcast::Sender<RelayMessage>,
+    rate_limiters: Arc<Mutex<RateLimiters>>,
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +85,17 @@ async fn websocket_handler(
     Query(params): Query<ConnectQuery>,
     ws: WebSocket,
 ) {
+    if params.token.is_none() {
+        warn!("WebSocket connection rejected: missing authentication token");
+        return;
+    }
+
+    let token = params.token.unwrap();
+    if !validate_auth_token(&token, &state) {
+        warn!("WebSocket connection rejected: invalid authentication token");
+        return;
+    }
+
     let client_id = uuid::Uuid::new_v4().to_string();
     info!(client_id = %client_id, "New WebSocket connection");
     
@@ -119,6 +131,19 @@ async fn websocket_handler(
     if let Err(e) = handler.await {
         error!(error = %e, "WebSocket handler error");
     }
+}
+
+fn validate_auth_token(token: &str, state: &AppState) -> bool {
+    let parts: Vec<&str> = token.split(':').collect();
+    if parts.len() != 2 {
+        return false;
+    }
+    
+    let public_key_b64 = parts[0];
+    let signature = parts[1];
+    
+    let message = format!("websocket_auth:{}", state.identity.server_id());
+    state.identity.verify_signature(message.as_bytes(), signature, public_key_b64)
 }
 
 async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
@@ -169,6 +194,15 @@ async fn federation_handshake_handler(
     State(state): State<AppState>,
     Json(payload): Json<protocol::messages::FederationMessage>,
 ) -> Result<Json<protocol::messages::FederationResponse>, StatusCode> {
+    {
+        let mut rate_limiters = state.rate_limiters.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let key = payload.server_pubkey.as_deref().unwrap_or("unknown");
+        if !rate_limiters.federation.check(key) {
+            warn!("Rate limit exceeded for federation handshake");
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+    }
+    
     info!(action = ?payload.action, "Federation handshake received");
     
     match payload.action.as_str() {
@@ -176,7 +210,8 @@ async fn federation_handshake_handler(
             let federation = state.federation.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             
             if let Some(remote_key) = &payload.server_pubkey {
-                if state.identity.verify_signature(&payload.signature, remote_key) {
+                let message = format!("{}:{}", payload.action, remote_key);
+                if state.identity.verify_signature(message.as_bytes(), &payload.signature, remote_key) {
                     federation.store_pending_trust(remote_key.clone());
                     info!(remote_server = %remote_key, "Trust request received, awaiting admin approval");
                 }
@@ -216,6 +251,14 @@ async fn relay_handler(
     State(state): State<AppState>,
     Json(payload): Json<protocol::messages::RelayRequest>,
 ) -> Result<StatusCode, StatusCode> {
+    {
+        let mut rate_limiters = state.rate_limiters.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        if !rate_limiters.relay.check(&payload.source_server) {
+            warn!("Rate limit exceeded for relay");
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+    }
+    
     let federation = state.federation.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     if !federation.is_trusted(&payload.target_server) {
@@ -244,9 +287,22 @@ async fn relay_handler(
 
 fn create_app(state: AppState) -> Router {
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
+            if let Some(origin_str) = origin.to_str().ok() {
+                origin_str.starts_with("chatlibre://") ||
+                origin_str.starts_with("http://localhost") ||
+                origin_str.starts_with("https://")
+            } else {
+                false
+            }
+        }))
+        .allow_methods(["GET", "POST"])
+        .allow_headers([
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+        ])
+        .max_age(std::time::Duration::from_secs(86400));
 
     Router::new()
         .route("/ws", get(websocket_handler))
@@ -279,6 +335,7 @@ async fn main() -> anyhow::Result<()> {
     let meta = Arc::new(Mutex::new(ServerMetaStore::new(db.clone())?));
     
     let (tx, _rx) = broadcast::channel::<RelayMessage>(1024);
+    let rate_limiters = Arc::new(Mutex::new(RateLimiters::new()));
 
     let state = AppState {
         identity: Arc::new(identity),
@@ -287,6 +344,7 @@ async fn main() -> anyhow::Result<()> {
         federation,
         meta,
         tx,
+        rate_limiters,
     };
 
     let app = create_app(state);

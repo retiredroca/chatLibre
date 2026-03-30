@@ -7,6 +7,11 @@ export interface RecoveryInfo {
   user_id: string;
 }
 
+function generateSecureId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function useIdentity() {
   const { 
     publicKey,
@@ -29,8 +34,8 @@ export function useIdentity() {
     try {
       const result: RecoveryInfo = {
         mnemonic: 'sample recovery phrase for demo',
-        public_key: `pk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        user_id: `u_${Date.now()}`,
+        public_key: `pk_${Date.now()}_${generateSecureId()}`,
+        user_id: `u_${Date.now()}_${generateSecureId().slice(0, 8)}`,
       };
       setRecoveryInfo(result);
       setIdentity({
@@ -54,8 +59,8 @@ export function useIdentity() {
     try {
       const result: RecoveryInfo = {
         mnemonic,
-        public_key: `pk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        user_id: `u_${Date.now()}`,
+        public_key: `pk_${Date.now()}_${generateSecureId()}`,
+        user_id: `u_${Date.now()}_${generateSecureId().slice(0, 8)}`,
       };
       setRecoveryInfo(result);
       setIdentity({

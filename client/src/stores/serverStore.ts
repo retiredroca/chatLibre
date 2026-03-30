@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+function generateSecureId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export interface Server {
   id: string;
   url: string;
@@ -277,7 +282,7 @@ export const useServerStore = create<ServerState & ServerActions>()(
       setContextMenu: (menu) => set({ contextMenu: menu }),
 
       importFromDiscordTemplate: (template, name, iconUrl) => {
-        const id = `srv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const id = `srv_${Date.now()}_${generateSecureId()}`;
         const categories: Category[] = [];
         const channels: Channel[] = [];
 

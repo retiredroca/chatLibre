@@ -249,7 +249,8 @@ export class E2EECryptoService {
   }
 
   generateMessageId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return `${Date.now()}-${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')}`;
   }
 }
 

@@ -105,7 +105,7 @@ impl ServerIdentity {
         )
     }
 
-    pub fn verify_signature(&self, signature_base64: &str, public_key_base64: &str) -> bool {
+    pub fn verify_signature(&self, message: &[u8], signature_base64: &str, public_key_base64: &str) -> bool {
         let Ok(signature_bytes) = base64::Engine::decode(
             &base64::engine::general_purpose::STANDARD,
             signature_base64,
@@ -127,6 +127,6 @@ impl ServerIdentity {
             return false;
         };
 
-        public_key.verify(b"test_signature", &signature_bytes).is_ok()
+        public_key.verify(message, &signature_bytes).is_ok()
     }
 }

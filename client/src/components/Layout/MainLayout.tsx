@@ -3,6 +3,17 @@ import { useServerStore, Channel, VoiceState } from '../../stores/serverStore';
 import { MessageList, MessageInput } from '../Chat/MessageList';
 import { useIdentityStore } from '../../stores/identityStore';
 
+function generateSecureId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function secureRandomIndex(max: number): number {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  const value = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+  return Math.abs(value) % max;
+}
+
 export function MainLayout() {
   const {
     servers,
@@ -700,7 +711,7 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    const id = `srv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `srv_${Date.now()}_${generateSecureId()}`;
     const colors = ['#5865F2', '#57F287', '#FEE75C', '#EB459E', '#ED4245', '#3BA55C'];
     const iconColor = colors[serverName.charCodeAt(0) % colors.length];
 
@@ -817,7 +828,7 @@ function CreateServerModal({ onClose }: { onClose: () => void }) {
       },
     ];
 
-    const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+    const randomTemplate = templates[secureRandomIndex(templates.length)];
 
     importFromDiscordTemplate(
       {
