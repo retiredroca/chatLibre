@@ -1,21 +1,21 @@
-name: Build on Tag
+name: Build
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+  issue_comment:
+    types: [created, edited]
 
 permissions:
   contents: write
 
 jobs:
-  build-client:
+  build:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.comment.body, '/build')
+    runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
         platform: [macos-latest, ubuntu-22.04, windows-latest]
-
-    runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,6 @@ jobs:
         with:
           node-version: 20
           cache: 'client/node_modules'
-          cache-dependency-path: client/package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -50,13 +49,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Client v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
-          prerelease: false
 
   build-server:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.comment.body, '/build')
     runs-on: ubuntu-latest
 
     steps:
@@ -74,21 +70,8 @@ jobs:
         working-directory: server
         run: cargo build --release
 
-      - name: Package
-        shell: bash
-        run: |
-          mkdir -p release
-          cd server/target/release
-          if [ -f chatlibre-server ]; then
-            tar czf ../../../release/chatlibre-server-linux-x86_64.tar.gz chatlibre-server
-          fi
-
-      - name: Upload Server artifact
-        uses: softprops/action-gh-release@v1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Server ${{ github.ref_name }}
-          draft: true
-          files: release/*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: chatlibre-server
+          path: server/target/release/chatlibre-server
