@@ -13,7 +13,9 @@ axum = { version = "0.7", features = ["ws"] }
 base64 = "0.22"
 bs58 = "0.5"
 futures-util = "0.3"
+http = "1.0"
 parking_lot = "0.12"
+rand = "0.8"
 ring = "0.17"
 rusqlite = { version = "0.31", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }

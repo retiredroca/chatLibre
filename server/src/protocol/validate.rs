@@ -1,94 +1,88 @@
-use super::messages::{ChannelType, ClientMessage, ReactionAction};
+#![allow(dead_code)]
+use super::messages::{ClientMessage, ReactionAction};
 use crate::protocol::messages::ChannelType as MsgChannelType;
 
 pub fn validate_message(msg: &ClientMessage) -> Result<(), ValidationError> {
     match msg {
-        ClientMessage::ChatMessage { 
-            channel_id, 
-            ciphertext, 
-            nonce, 
-            .. 
+        ClientMessage::ChatMessage {
+            channel_id,
+            ciphertext,
+            nonce,
+            ..
         } => {
             validate_channel_id(channel_id)?;
             validate_ciphertext(ciphertext)?;
             validate_nonce(nonce)?;
         }
-        
-        ClientMessage::ChatEdit { 
-            channel_id, 
-            message_id, 
-            ciphertext, 
-            nonce, 
+
+        ClientMessage::ChatEdit {
+            channel_id,
+            message_id,
+            ciphertext,
+            nonce,
         } => {
             validate_channel_id(channel_id)?;
             validate_message_id(message_id)?;
             validate_ciphertext(ciphertext)?;
             validate_nonce(nonce)?;
         }
-        
-        ClientMessage::ChatDelete { 
-            channel_id, 
-            message_id, 
+
+        ClientMessage::ChatDelete {
+            channel_id,
+            message_id,
         } => {
             validate_channel_id(channel_id)?;
             validate_message_id(message_id)?;
         }
-        
-        ClientMessage::ChatReaction { 
-            channel_id, 
-            message_id, 
-            emoji, 
-            action, 
+
+        ClientMessage::ChatReaction {
+            channel_id,
+            message_id,
+            emoji,
+            action,
         } => {
             validate_channel_id(channel_id)?;
             validate_message_id(message_id)?;
             validate_emoji(emoji)?;
             validate_reaction_action(action)?;
         }
-        
-        ClientMessage::ChannelCreate { 
-            name, 
-            channel_type, 
-            .. 
+
+        ClientMessage::ChannelCreate {
+            name, channel_type, ..
         } => {
             validate_channel_name(name)?;
             validate_channel_type(channel_type)?;
         }
-        
-        ClientMessage::ChannelUpdate { 
-            channel_id, 
-            name, 
-            .. 
+
+        ClientMessage::ChannelUpdate {
+            channel_id, name, ..
         } => {
             validate_channel_id(channel_id)?;
             if let Some(n) = name {
                 validate_channel_name(n)?;
             }
         }
-        
-        ClientMessage::ChannelDelete { 
-            channel_id, 
-        } => {
+
+        ClientMessage::ChannelDelete { channel_id } => {
             validate_channel_id(channel_id)?;
         }
-        
-        ClientMessage::FederationRelay { 
-            target_server, 
-            encrypted_payload, 
-            .. 
+
+        ClientMessage::FederationRelay {
+            target_server,
+            encrypted_payload,
+            ..
         } => {
             if target_server.is_empty() || target_server.len() > 256 {
                 return Err(ValidationError::InvalidField("target_server".to_string()));
             }
             if encrypted_payload.is_empty() || encrypted_payload.len() > 1024 * 1024 {
-                return Err(ValidationError::InvalidField("encrypted_payload".to_string()));
+                return Err(ValidationError::InvalidField(
+                    "encrypted_payload".to_string(),
+                ));
             }
         }
-        
-        ClientMessage::SyncRequest { 
-            since, 
-            channel_id, 
-        } => {
+
+        ClientMessage::SyncRequest { since, channel_id } => {
             if let Some(s) = since {
                 if *s > u64::MAX / 1000 {
                     return Err(ValidationError::InvalidField("since".to_string()));
@@ -98,14 +92,12 @@ pub fn validate_message(msg: &ClientMessage) -> Result<(), ValidationError> {
                 validate_channel_id(cid)?;
             }
         }
-        
-        ClientMessage::PresenceUpdate { 
-            status, 
-        } => {
+
+        ClientMessage::PresenceUpdate { status } => {
             validate_presence_status(status)?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -160,22 +152,20 @@ fn validate_reaction_action(action: &ReactionAction) -> Result<(), ValidationErr
     }
 }
 
-fn validate_presence_status(status: &crate::protocol::messages::PresenceStatus) -> Result<(), ValidationError> {
+fn validate_presence_status(
+    status: &crate::protocol::messages::PresenceStatus,
+) -> Result<(), ValidationError> {
     match status {
-        crate::protocol::messages::PresenceStatus::Online |
-        crate::protocol::messages::PresenceStatus::Idle |
-        crate::protocol::messages::PresenceStatus::Dnd |
-        crate::protocol::messages::PresenceStatus::Offline => Ok(()),
+        crate::protocol::messages::PresenceStatus::Online
+        | crate::protocol::messages::PresenceStatus::Idle
+        | crate::protocol::messages::PresenceStatus::Dnd
+        | crate::protocol::messages::PresenceStatus::Offline => Ok(()),
     }
 }
 
 fn is_valid_channel_name(name: &str) -> bool {
-    name.chars().all(|c| {
-        c.is_ascii_lowercase() || 
-        c.is_ascii_digit() || 
-        c == '-' || 
-        c == '_'
-    })
+    name.chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
 }
 
 fn validate_channel_type(t: &MsgChannelType) -> Result<(), ValidationError> {
@@ -200,7 +190,10 @@ impl std::fmt::Display for ValidationError {
                 write!(f, "Invalid field: {}", field)
             }
             ValidationError::InvalidChannelName => {
-                write!(f, "Invalid channel name (lowercase, numbers, hyphens, underscores only)")
+                write!(
+                    f,
+                    "Invalid channel name (lowercase, numbers, hyphens, underscores only)"
+                )
             }
             ValidationError::InvalidChannelType => {
                 write!(f, "Invalid channel type")

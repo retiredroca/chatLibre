@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,7 +12,7 @@ pub enum ClientMessage {
         reply_to: Option<String>,
         thread_id: Option<String>,
     },
-    
+
     #[serde(rename = "chat.edit")]
     ChatEdit {
         channel_id: String,
@@ -19,13 +20,13 @@ pub enum ClientMessage {
         ciphertext: String,
         nonce: String,
     },
-    
+
     #[serde(rename = "chat.delete")]
     ChatDelete {
         channel_id: String,
         message_id: String,
     },
-    
+
     #[serde(rename = "chat.reaction")]
     ChatReaction {
         channel_id: String,
@@ -33,7 +34,7 @@ pub enum ClientMessage {
         emoji: String,
         action: ReactionAction,
     },
-    
+
     #[serde(rename = "channel.create")]
     ChannelCreate {
         name: String,
@@ -41,35 +42,31 @@ pub enum ClientMessage {
         channel_type: ChannelType,
         parent_id: Option<String>,
     },
-    
+
     #[serde(rename = "channel.update")]
     ChannelUpdate {
         channel_id: String,
         name: Option<String>,
         topic: Option<String>,
     },
-    
+
     #[serde(rename = "channel.delete")]
-    ChannelDelete {
-        channel_id: String,
-    },
-    
+    ChannelDelete { channel_id: String },
+
     #[serde(rename = "federation.relay")]
     FederationRelay {
         target_server: String,
         encrypted_payload: Vec<u8>,
     },
-    
+
     #[serde(rename = "sync.request")]
     SyncRequest {
         since: Option<u64>,
         channel_id: Option<String>,
     },
-    
+
     #[serde(rename = "presence.update")]
-    PresenceUpdate {
-        status: PresenceStatus,
-    },
+    PresenceUpdate { status: PresenceStatus },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,7 +83,7 @@ pub enum ServerMessage {
         reply_to: Option<String>,
         thread_id: Option<String>,
     },
-    
+
     #[serde(rename = "chat.edit")]
     ChatEdit {
         id: String,
@@ -96,31 +93,28 @@ pub enum ServerMessage {
         nonce: String,
         timestamp: u64,
     },
-    
+
     #[serde(rename = "chat.delete")]
     ChatDelete {
         channel_id: String,
         message_id: String,
         timestamp: u64,
     },
-    
+
     #[serde(rename = "channel.list")]
     ChannelList {
         channels: Vec<super::types::ChannelMeta>,
     },
-    
+
     #[serde(rename = "sync.response")]
     SyncResponse {
         channels: Vec<super::types::ChannelMeta>,
         pinned_messages: Vec<PinnedMessage>,
         timestamp: u64,
     },
-    
+
     #[serde(rename = "error")]
-    Error {
-        code: String,
-        message: String,
-    },
+    Error { code: String, message: String },
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -186,4 +180,9 @@ pub struct RelayRequest {
     pub encrypted_payload: Vec<u8>,
     pub signature: String,
     pub forward: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetAddrMessage {
+    pub nonce: u64,
 }

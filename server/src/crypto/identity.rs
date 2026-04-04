@@ -1,4 +1,5 @@
-use ring::signature::{Ed25519KeyPair, KeyPair, Signature, ED25519};
+#![allow(dead_code)]
+use ring::signature::{Ed25519KeyPair, KeyPair, ED25519};
 use serde::{Deserialize, Serialize};
 use sled::Db;
 
@@ -24,20 +25,19 @@ impl ServerIdentity {
         let tree = db.open_tree(SERVER_IDENTITY_TREE)?;
 
         if let Some(private_key_bytes) = tree.get(PRIVATE_KEY_PREFIX)? {
-            let key_pair = Ed25519KeyPair::from_bytes(
-                &(private_key_bytes.as_ref().try_into()
-                    .map_err(|_| anyhow::anyhow!("Invalid private key length"))?)
-            ).map_err(|_| anyhow::anyhow!("Invalid private key"))?;
-            
+            let key_pair = Ed25519KeyPair::from_pkcs8(private_key_bytes.as_ref())
+                .map_err(|_| anyhow::anyhow!("Invalid private key"))?;
+
             let public_key = key_pair.public_key().as_ref().to_vec();
             let server_id = Self::derive_server_id(&public_key);
-            let created_at = tree.get("created_at")?
-                .and_then(|v| String::from_utf8(v.into_inner()).ok())
+            let created_at = tree
+                .get("created_at")?
+                .and_then(|v| String::from_utf8(v.to_vec()).ok())
                 .and_then(|s| s.parse().ok())
                 .unwrap_or_else(|| {
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_default()
                         .as_secs()
                 });
 
@@ -50,21 +50,19 @@ impl ServerIdentity {
             let rng = ring::rand::SystemRandom::new();
             let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng)
                 .map_err(|_| anyhow::anyhow!("Failed to generate keypair"))?;
-            
-            let key_pair = Ed25519KeyPair::from_pkcs8(
-                ED25519,
-                pkcs8_bytes.as_ref()
-            ).map_err(|_| anyhow::anyhow!("Failed to parse generated keypair"))?;
-            
+
+            let key_pair = Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())
+                .map_err(|_| anyhow::anyhow!("Failed to parse generated keypair"))?;
+
             let public_key = key_pair.public_key().as_ref().to_vec();
             let server_id = Self::derive_server_id(&public_key);
             let created_at = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)?
                 .as_secs();
-            
+
             tree.insert(PRIVATE_KEY_PREFIX, pkcs8_bytes.as_ref())?;
-            tree.insert("public_key", &public_key)?;
-            tree.insert("created_at", created_at.to_string().as_bytes())?;
+            tree.insert(PUBLIC_KEY_PREFIX, public_key.as_slice())?;
+            tree.insert(b"created_at", created_at.to_string().as_bytes())?;
             tree.flush()?;
 
             Ok(Self {
@@ -90,43 +88,41 @@ impl ServerIdentity {
     }
 
     pub fn public_key_pem(&self) -> String {
-        let encoded = base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            self.public_key(),
-        );
-        format!("-----BEGIN ED25519-----\n{}\n-----END ED25519-----", encoded)
-    }
-
-    pub fn sign(&self, message: &[u8]) -> String {
-        let signature = self.key_pair.sign(message);
-        base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            signature.as_ref(),
+        use base64::Engine as _;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(self.public_key());
+        format!(
+            "-----BEGIN ED25519-----\n{}\n-----END ED25519-----",
+            encoded
         )
     }
 
-    pub fn verify_signature(&self, message: &[u8], signature_base64: &str, public_key_base64: &str) -> bool {
-        let Ok(signature_bytes) = base64::Engine::decode(
-            &base64::engine::general_purpose::STANDARD,
-            signature_base64,
-        ) else {
-            return false;
-        };
-        
-        let Ok(public_key_bytes) = base64::Engine::decode(
-            &base64::engine::general_purpose::STANDARD,
-            public_key_base64,
-        ) else {
+    pub fn sign(&self, message: &[u8]) -> String {
+        use base64::Engine as _;
+        let signature = self.key_pair.sign(message);
+        base64::engine::general_purpose::STANDARD.encode(signature.as_ref())
+    }
+
+    pub fn verify_signature(
+        &self,
+        message: &[u8],
+        signature_base64: &str,
+        public_key_base64: &str,
+    ) -> bool {
+        use base64::Engine as _;
+
+        let Ok(signature_bytes) =
+            base64::engine::general_purpose::STANDARD.decode(signature_base64)
+        else {
             return false;
         };
 
-        let Ok(public_key) = ring::signature::UnparsedPublicKey::new(
-            &ED25519,
-            public_key_bytes,
-        ).parse() else {
+        let Ok(public_key_bytes) =
+            base64::engine::general_purpose::STANDARD.decode(public_key_base64)
+        else {
             return false;
         };
 
+        let public_key = ring::signature::UnparsedPublicKey::new(&ED25519, public_key_bytes);
         public_key.verify(message, &signature_bytes).is_ok()
     }
 }

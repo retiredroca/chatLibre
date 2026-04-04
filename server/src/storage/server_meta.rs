@@ -1,8 +1,9 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use sled::Db;
 
 const META_TREE: &str = "server_meta";
-const INFO_KEY: &[u8] = b"server_info";
+const INFO_KEY: &str = "server_info";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerInfo {
@@ -25,9 +26,10 @@ impl ServerMetaStore {
 
     pub fn get_info(&self) -> anyhow::Result<ServerInfo> {
         let tree = self.db.open_tree(META_TREE)?;
-        
+
         if let Some(value) = tree.get(INFO_KEY)? {
-            let info: ServerInfo = serde_json::from_slice(&value)?;
+            let value_ref: &[u8] = &value;
+            let info: ServerInfo = serde_json::from_slice(value_ref)?;
             Ok(info)
         } else {
             let default_info = ServerInfo {
@@ -40,7 +42,7 @@ impl ServerMetaStore {
                     .duration_since(std::time::UNIX_EPOCH)?
                     .as_secs(),
             };
-            
+
             self.set_info(&default_info)?;
             Ok(default_info)
         }
@@ -49,7 +51,7 @@ impl ServerMetaStore {
     pub fn set_info(&self, info: &ServerInfo) -> anyhow::Result<()> {
         let tree = self.db.open_tree(META_TREE)?;
         let value = serde_json::to_vec(info)?;
-        tree.insert(INFO_KEY, value)?;
+        tree.insert(INFO_KEY.as_bytes(), value.as_slice())?;
         tree.flush()?;
         Ok(())
     }
