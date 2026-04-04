@@ -30,6 +30,7 @@ chatLibre is a complete open-source alternative to centralized chat platforms. B
 
 ### Federation
 - Self-host your own server in minutes
+- Bitcoin-style peer discovery (DNS seeds + addr protocol)
 - Federate with other chatLibre servers via public key exchange
 - Cross-server channel membership
 - Server discovery by URL + public key verification
@@ -47,21 +48,27 @@ chatLibre is a complete open-source alternative to centralized chat platforms. B
 ### Prerequisites
 - Rust 1.75+ (for server)
 - Node.js 20+ (for client)
-- Tauri CLI (`npm install -g @tauri-apps/cli`)
+- Docker & Docker Compose (optional)
 
-### Run the Server
+### Run with Docker
 
 ```bash
-# Build and run
-cd server
-cargo build --release
-./target/release/chatlibre-server
-
-# Or with Docker
 docker compose up -d
 ```
 
-### Run the Client
+Access:
+- **Chat client**: http://localhost
+- **Nginx Proxy Manager**: http://localhost:81 (admin@admin.com / changeme)
+
+### Run Server Manually
+
+```bash
+cd server
+cargo build --release
+KEYFORGE_SERVER_PORT=8080 ./target/release/chatlibre-server
+```
+
+### Run Client
 
 ```bash
 cd client
@@ -112,8 +119,9 @@ CLIENT: Full E2EE, local encrypted storage
 |-----------|------------|
 | Server | Rust + Tokio + Axum + Sled |
 | Desktop Client | Tauri 2.0 + React + TypeScript |
-| Encryption | Web Crypto API (AES-GCM, Ed25519) |
+| Encryption | Web Crypto API (AES-GCM, ECDH), libsodium |
 | Messaging | WebSocket + WebRTC |
+| Proxy | Nginx Proxy Manager |
 | Styling | Tailwind CSS |
 
 ---
@@ -123,50 +131,46 @@ CLIENT: Full E2EE, local encrypted storage
 ```
 chatlibre/
 ├── server/              # Rust relay server
-│   ├── src/
-│   │   ├── main.rs
-│   │   ├── crypto/      # Server identity & crypto
-│   │   ├── protocol/    # Message types & validation
-│   │   └── storage/     # Minimal relay storage
+│   └── src/
+│       ├── main.rs           # Server entry, routes, handlers
+│       ├── crypto/          # Identity, signatures, peer discovery
+│       ├── protocol/        # Message types & validation
+│       └── storage/         # Minimal relay storage (sled)
 ├── client/              # Tauri desktop client
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── hooks/       # Custom React hooks
-│   │   ├── pages/       # Page components
-│   │   ├── services/    # Crypto service
-│   │   ├── stores/      # Zustand state stores
-│   │   └── styles/      # CSS styles
-│   └── src-tauri/       # Tauri Rust backend
-├── protocol/            # Shared protocol definitions
-├── docs/                # Architecture documentation
+│   └── src/
+│       ├── components/      # React components
+│       ├── hooks/          # Custom React hooks
+│       ├── pages/          # Page components
+│       ├── services/       # Crypto service (E2EE)
+│       ├── stores/         # Zustand state stores
+│       └── styles/         # CSS styles
 ├── docker/              # Docker configuration
-└── scripts/             # Utility scripts
+├── .github/
+│   └── workflows/       # GitHub Actions CI/CD
+└── docker-compose.yml   # Docker Compose config
 ```
 
 ---
 
-## Documentation
+## Building
 
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Federation Protocol](docs/FEDERATION.md)
-- [Cryptographic Design](docs/CRYPTOGRAPHY.md)
-- [Self-Hosting Guide](docs/SELF_HOSTING.md)
-- [Specification](SPEC.md)
+### Manual Build
 
----
+```bash
+# Server
+cd server && cargo build --release
 
-## Development Status
+# Client
+cd client && npm install && npm run tauri build
+```
 
-| Component | Status |
-|-----------|--------|
-| Server core | ✅ Complete |
-| WebSocket handlers | ✅ Complete |
-| Client UI | ✅ Complete |
-| Discord template import | ✅ Complete |
-| E2EE messaging | ✅ Complete |
-| Voice channels | ✅ Complete |
-| Federation | ✅ Complete |
-| File encryption | ✅ Complete |
+### GitHub Actions
+
+Trigger builds via:
+- **Manual**: Actions → Build → Run workflow
+- **Comment**: Post `/build` on any PR or issue
+
+Builds run on macOS, Ubuntu, and Windows in parallel.
 
 ---
 
@@ -181,36 +185,15 @@ We take security seriously. Please read our [Security Policy](SECURITY.md) befor
 - No third-party dependencies that phone home
 - Configurable client-side message retention
 
----
-
-## Contributing
-
-Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Setup
-
-```bash
-# Server
-cd server
-cargo build
-cargo test
-
-# Client
-cd client
-npm install
-npm run dev
-```
+### Cryptographic Design
+- **Identity**: Ed25519 keypairs
+- **Key Exchange**: X25519/ECDH (Curve25519)
+- **Message Encryption**: AES-256-GCM
+- **File Encryption**: Per-file keys with ECDH key wrapping
+- **Signatures**: Ed25519 for server identity and message authentication
 
 ---
 
 ## License
 
-AGPL-3.0 or later — see [LICENSE](LICENSE)
-
----
-
-## Status
-
-**Active Development** — Core features complete
-
-All core features are implemented. The project includes E2EE messaging with Double Ratchet encryption, file encryption, WebRTC voice channels, and federation protocol support. Testing and integration work continues.
+MIT — see [LICENSE](LICENSE)
