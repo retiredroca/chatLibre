@@ -176,8 +176,6 @@ Builds run on macOS, Ubuntu, and Windows in parallel.
 
 ## Security
 
-We take security seriously. Please read our [Security Policy](SECURITY.md) before reporting vulnerabilities.
-
 ### Privacy Guarantees
 - No plaintext messages on servers
 - No account databases
