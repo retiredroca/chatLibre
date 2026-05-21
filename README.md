@@ -38,23 +38,60 @@ chatLibre is a complete open-source alternative to centralized chat platforms. E
 ## Quick Start
 
 ### Prerequisites
-- **MSVC 2026+** or **GCC 14+** (C++23)
-- **CMake 3.20+**
-- **vcpkg** with dependencies (automatic)
+| Platform | Compiler | Package Manager |
+|----------|----------|----------------|
+| **Windows** | MSVC 2026 Build Tools | vcpkg (`x64-windows`) |
+| **Linux** | GCC 14+ or Clang 18+ | vcpkg or distro packages |
+| **macOS** | Apple Clang 16+ (Xcode 16+) | vcpkg or Homebrew |
 
-### Build
+Dependencies (installed automatically by vcpkg): Boost.Beast, libsodium, Opus, SDL2, Dear ImGui.
+
+### Build with vcpkg (all platforms)
 
 ```bash
+# Install vcpkg if needed
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg && bootstrap-vcpkg.sh   # Linux/macOS, or bootstrap-vcpkg.bat on Windows
+
+# Build chatLibre
 cmake -B build -S . \
-  -DCMAKE_TOOLCHAIN_FILE="path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" \
-  -DVCPKG_TARGET_TRIPLET=x64-windows
+  -DCMAKE_TOOLCHAIN_FILE="path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
 cmake --build build --config Release
+```
+
+On Windows, pass `-DVCPKG_TARGET_TRIPLET=x64-windows` to CMake.
+
+### Build with system packages (Linux)
+
+```bash
+# Debian/Ubuntu
+sudo apt install build-essential cmake libboost-dev libsodium-dev \
+  libopus-dev libsdl2-dev
+
+# Fedora
+sudo dnf install gcc-c++ cmake boost-devel libsodium-devel \
+  opus-devel SDL2-devel
+
+# Arch
+sudo pacman -S base-devel cmake boost libsodium opus sdl2
+
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+### Build with system packages (macOS)
+
+```bash
+brew install cmake boost libsodium opus sdl2
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
 ### Run Server
 
 ```bash
-./build/Release/chatlibre-server.exe --port 9733
+./build/Release/chatlibre-server     # Linux/macOS
+.\build\Release\chatlibre-server.exe  # Windows
 ```
 
 The server automatically creates an Ed25519 identity at `~/.chatlibre/identity.bin` on first launch.
@@ -62,7 +99,8 @@ The server automatically creates an Ed25519 identity at `~/.chatlibre/identity.b
 ### Run Client
 
 ```bash
-./build/Release/chatlibre-client.exe
+./build/Release/chatlibre-client      # Linux/macOS
+.\build\Release\chatlibre-client.exe  # Windows
 ```
 
 ---
