@@ -292,4 +292,4 @@ chatlibre/
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+GNU Affero General Public License v3.0 — see [LICENSE](LICENSE)
