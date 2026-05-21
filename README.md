@@ -171,6 +171,90 @@ chatlibre/
 
 ---
 
+## Implementation Status
+
+| Feature | Status |
+|---------|--------|
+| Server Ed25519 identity gen | ✅ Done |
+| Server WebSocket listener | ✅ Done |
+| Client Ed25519 identity gen | ✅ Done |
+| Client WebSocket connect | ✅ Done |
+| Auth handshake (challenge-sign-response) | ✅ Done |
+| X25519 session key derivation | ✅ Done |
+| Encrypted message relay | ✅ Done |
+| Binary WebSocket protocol (all packet types) | ✅ Done |
+| Rate limiting | ✅ Done |
+| File storage (encrypted on disk) | ✅ Done |
+| Discord import scanner | ✅ Done |
+| Protocol test suite | ✅ Done |
+| Client SDL2 + ImGui GUI | ✅ Implemented, untested interactively |
+| Room create/join/leave | ✅ Implemented, untested |
+| Voice channels (Opus over UDP) | ✅ Implemented, untested |
+| Federation (peer discovery + relay) | ✅ Implemented, untested |
+| Message reactions | ✅ Implemented, untested |
+| Thread/forum channel types | ❌ Not implemented |
+| User roles/permissions | ❌ Not implemented |
+| User invites | ❌ Not implemented |
+| Message history | ❌ Not implemented |
+| BIP39 mnemonic recovery | ❌ Not implemented |
+
+---
+
+## Roadmap
+
+### Phase 1 — Core Protocol (Complete)
+- [x] Server identity & listener
+- [x] Client identity & WebSocket connection
+- [x] Ed25519 auth handshake
+- [x] X25519 session key exchange
+- [x] Secretbox message encryption/relay
+- [x] Binary wire protocol
+
+### Phase 2 — E2EE Messaging (Partial)
+- [x] Send/receive encrypted messages
+- [x] Server relays ciphertext to room members
+- [ ] Threaded replies
+- [ ] Message editing with signature verification
+- [ ] Message deletion
+- [ ] Full room list management (list, join, leave from GUI)
+
+### Phase 3 — Voice & Media
+- [x] Voice channel stub (Opus encode/decode, UDP relay)
+- [ ] Microphone capture → Opus encode → send over UDP
+- [ ] Audio playback (Opus decode → SDL audio)
+- [ ] Screen sharing (desktop capture → UDP relay)
+
+### Phase 4 — Federation
+- [x] Peer discovery stubs
+- [x] Cross-server relay stubs
+- [ ] DNS seed bootstrap
+- [ ] Inter-server E2EE relay
+- [ ] Address propagation
+
+### Phase 5 — Client Polish
+- [ ] Interactive GUI testing (connect, auth, send message)
+- [ ] Room list display in GUI
+- [ ] Message history view
+- [ ] Connection status indicator
+- [ ] Settings dialog (host, port, theme)
+
+### Phase 6 — Advanced Features
+- [ ] BIP39 mnemonic key recovery
+- [ ] Direct Messages (1:1 encrypted rooms)
+- [ ] Forum/stage channel types
+- [ ] User roles & permissions
+- [ ] Message search
+- [ ] File upload/share
+
+### Phase 7 — Hardening
+- [ ] Dockerfile for headless server
+- [ ] CI pipeline (GitHub Actions)
+- [ ] Unit tests for protocol serialization
+- [ ] Fuzz testing for packet parsing
+- [ ] Memory sanitizer pass
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE)

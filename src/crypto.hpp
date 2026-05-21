@@ -116,14 +116,13 @@ inline auto b64_encode(std::span<const std::byte> data) -> std::string {
     sodium_bin2base64(out.data(), len,
                       reinterpret_cast<const unsigned char*>(data.data()), data.size(),
                       sodium_base64_VARIANT_ORIGINAL);
-    out.pop_back(); // remove null terminator
     return out;
 }
 
 // Base64 decode
 inline auto b64_decode(std::string_view enc) -> std::vector<std::byte> {
     if (enc.empty()) return {};
-    size_t bin_len = enc.size() / 4 * 3;
+    size_t bin_len = enc.size() * 3 / 4;
     std::vector<std::byte> out(bin_len);
     size_t final_len = 0;
     if (sodium_base642bin(reinterpret_cast<unsigned char*>(out.data()), bin_len,

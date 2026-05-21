@@ -7,16 +7,13 @@
 inline void handle_packet(ServerState& state, Session& session, ParsedPacket const& pkt) {
     switch (pkt.type) {
     case PacketType::CS_AUTH: {
-        // Skip if we already sent challenge (this would be the response)
         if (!session.challenge_sent) {
-            // Send challenge
             session.challenge = make_challenge();
             auto pkt = build_packet(PacketType::CS_AUTH, "",
                 std::span<const std::byte>(session.challenge));
             session.ws->write(asio::buffer(pkt));
             return;
         }
-        // Parse auth payload
         auto auth = AuthPayload::deserialize(pkt.payload);
         if (!auth) {
             auto err = build_packet(PacketType::SC_ERROR, "",
@@ -24,7 +21,6 @@ inline void handle_packet(ServerState& state, Session& session, ParsedPacket con
             session.ws->write(asio::buffer(err));
             return;
         }
-        // Verify challenge signature
         auto to_verify = std::vector<std::byte>(32 + 32);
         std::memcpy(to_verify.data(), session.challenge.data(), 32);
         std::memcpy(to_verify.data() + 32, auth->ed25519_pk.data(), 32);
@@ -37,7 +33,6 @@ inline void handle_packet(ServerState& state, Session& session, ParsedPacket con
         std::lock_guard lk(state.mtx);
         session.ed25519_pk = auth->ed25519_pk;
         session.display_name = std::move(auth->display_name);
-        // Derive session key
         auto their_x25519 = std::array<std::byte, 32>{};
         crypto_sign_ed25519_pk_to_curve25519(
             reinterpret_cast<unsigned char*>(their_x25519.data()),
@@ -167,6 +162,7 @@ inline void accept_loop(ServerState& state, tcp::acceptor& acceptor) {
             session.ws = std::make_unique<websocket::stream<beast::tcp_stream>>(std::move(sock));
             session.ws->async_accept([&session, &state](beast::error_code ec2) {
                 if (ec2) { delete &session; return; }
+                session.ws->binary(true);
                 auto challenge = make_challenge();
                 {
                     std::lock_guard lk(state.mtx);

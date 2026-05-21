@@ -1,5 +1,6 @@
 #pragma once
 #include "app.hpp"
+#include "network.hpp"
 #include "../protocol.hpp"
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
@@ -118,7 +119,8 @@ inline auto render_gui(ClientState& state, GuiState& gui) -> void {
         std::lock_guard lk(state.event_mtx);
         auto it = state.room_ids.find(state.current_room);
         if (it != state.room_ids.end()) {
-            // send
+            client_send_message(state, it->second,
+                std::string_view(gui.msg_buf));
         }
         gui.msg_buf[0] = '\0';
     }

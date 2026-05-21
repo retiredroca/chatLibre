@@ -65,3 +65,18 @@ target_link_libraries(chatlibre-client PRIVATE
     imgui::imgui
     opengl32
 )
+
+# -----------------------------------------------------------
+# protocol-test
+# -----------------------------------------------------------
+add_executable(protocol-test
+    tests/protocol_test.cpp
+    src/crypto.hpp
+    src/identity.hpp
+    src/protocol.hpp
+)
+target_include_directories(protocol-test PRIVATE src)
+target_link_libraries(protocol-test PRIVATE
+    Boost::beast
+    unofficial-sodium::sodium
+)

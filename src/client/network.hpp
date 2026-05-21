@@ -10,6 +10,7 @@ inline auto client_connect(ClientState& state, std::string const& host, uint16_t
         auto eps = resolver.resolve(host, std::to_string(port));
         beast::get_lowest_layer(state.ws).connect(eps);
         state.ws.handshake(host, "/");
+        state.ws.binary(true);
         state.connected = true;
         return true;
     } catch (std::exception const& e) {
@@ -89,13 +90,21 @@ inline void client_read_loop(ClientState& state) {
             case PacketType::SC_AUTH_OK: {
                 state.authenticated = true;
                 state.server_id = std::string((const char*)pkt->payload.data(), pkt->payload.size());
-                // Derive session key
+                // Derive session key from server's Ed25519 pk
                 {
-                    auto server_x25519 = std::array<std::byte, 32>{};
-                    // Server's ed25519 pk is in server_id (base64). Decode to get x25519
                     auto decoded = crypto::b64_decode(state.server_id);
-                    // Actually server sends base64 of its pk, but we need to derive x25519 from ed25519
-                    // This is a simplified approach
+                    if (decoded.size() == 32) {
+                        std::array<std::byte, 32> server_ed{};
+                        std::memcpy(server_ed.data(), decoded.data(), 32);
+                        std::array<std::byte, 32> server_x25519{};
+                        crypto_sign_ed25519_pk_to_curve25519(
+                            reinterpret_cast<unsigned char*>(server_x25519.data()),
+                            reinterpret_cast<unsigned char*>(server_ed.data()));
+                        state.session_key = crypto::kx_client(
+                            state.identity.x25519_pk,
+                            state.identity.x25519_sk,
+                            server_x25519);
+                    }
                     state.events.push_back({.type = ClientState::ChatEvent::MSG_SYS,
                         .text = "Authenticated"});
                 }
