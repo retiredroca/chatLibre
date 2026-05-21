@@ -68,6 +68,12 @@ inline auto client_join_room(ClientState& state, std::array<std::byte, 32> const
     state.ws.write(asio::buffer(pkt));
 }
 
+// Request room list
+inline auto client_list_rooms(ClientState& state) -> void {
+    auto pkt = build_packet(PacketType::CS_LIST_ROOMS, "", {});
+    state.ws.write(asio::buffer(pkt));
+}
+
 // Read loop for client
 inline void client_read_loop(ClientState& state) {
     auto buf = std::make_shared<beast::flat_buffer>();
@@ -107,6 +113,27 @@ inline void client_read_loop(ClientState& state) {
                     }
                     state.events.push_back({.type = ClientState::ChatEvent::MSG_SYS,
                         .text = "Authenticated"});
+                    client_list_rooms(state);
+                }
+                break;
+            }
+            case PacketType::SC_ROOM_LIST: {
+                if (pkt->payload.size() < 4) break;
+                uint32_t count = from_big_endian(
+                    std::span<const std::byte, 4>(pkt->payload.subspan(0, 4)));
+                state.room_list.clear();
+                state.room_ids.clear();
+                state.room_id_to_name.clear();
+                size_t off = 4;
+                for (uint32_t i = 0; i < count; i++) {
+                    auto remaining = pkt->payload.subspan(off);
+                    auto ri = RoomInfo::deserialize(remaining);
+                    if (!ri) break;
+                    state.room_list.push_back(ri->name);
+                    state.room_ids[ri->name] = ri->room_id;
+                    std::string rkey((const char*)ri->room_id.data(), 32);
+                    state.room_id_to_name[rkey] = ri->name;
+                    off += (32 + 4 + ri->name.size() + 1 + 4);
                 }
                 break;
             }
@@ -116,9 +143,12 @@ inline void client_read_loop(ClientState& state) {
                     auto pt = crypto::secretbox_decrypt(msg->encrypted_body, msg->nonce, state.session_key);
                     if (pt) {
                         std::string text((const char*)pt->data(), pt->size());
+                        std::string room_key((const char*)msg->room_id.data(), 32);
                         state.events.push_back({.type = ClientState::ChatEvent::MSG_MSG,
                             .sender = pkt->sender_id,
+                            .room = room_key,
                             .text = std::move(text),
+                            .room_id = msg->room_id,
                             .ts = msg->ts});
                     }
                 }

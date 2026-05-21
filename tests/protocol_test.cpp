@@ -91,19 +91,50 @@ auto main() -> int {
     auto session_key = crypto::kx_client(id.x25519_pk, id.x25519_sk, server_x25519);
     std::cerr << "  OK session key\n";
 
-    // 5. Send encrypted message
-    std::array<std::byte, 32> room_id{};
-    crypto::random_bytes(room_id);
+    // 5. Request room list (should be empty)
+    ws.write(asio::buffer(build_packet(PacketType::CS_LIST_ROOMS, "", {})));
+    buf.consume(buf.size());
+    ws.read(buf, ec);
+    if (ec) { std::cerr << "FAIL: read room list: " << ec.message() << "\n"; return 1; }
+    raw = std::span<const std::byte>((const std::byte*)buf.data().data(), buf.data().size());
+    pkt = parse_packet(raw);
+    if (!pkt || pkt->type != PacketType::SC_ROOM_LIST) {
+        std::cerr << "FAIL: expected SC_ROOM_LIST\n"; return 1;
+    }
+    if (pkt->payload.size() < 4) { std::cerr << "FAIL: room list too small\n"; return 1; }
+    uint32_t room_count = from_big_endian(std::span<const std::byte, 4>(pkt->payload.subspan(0, 4)));
+    std::cerr << "  OK room list (" << room_count << " rooms)\n";
+
+    // 6. Create a room
+    auto room_name = std::string("test-room");
+    ws.write(asio::buffer(build_packet(PacketType::CS_CREATE_ROOM, "",
+        std::span<const std::byte>((const std::byte*)room_name.data(), room_name.size()))));
+    // Server should respond with SC_ROOM_LIST
+    buf.consume(buf.size());
+    ws.read(buf, ec);
+    if (ec) { std::cerr << "FAIL: read room list after create: " << ec.message() << "\n"; return 1; }
+    raw = std::span<const std::byte>((const std::byte*)buf.data().data(), buf.data().size());
+    pkt = parse_packet(raw);
+    if (!pkt || pkt->type != PacketType::SC_ROOM_LIST) {
+        std::cerr << "FAIL: expected SC_ROOM_LIST after create\n"; return 1;
+    }
+    room_count = from_big_endian(std::span<const std::byte, 4>(pkt->payload.subspan(0, 4)));
+    if (room_count != 1) { std::cerr << "FAIL: expected 1 room\n"; return 1; }
+    auto ri = RoomInfo::deserialize(pkt->payload.subspan(4));
+    if (!ri || ri->name != "test-room") { std::cerr << "FAIL: bad room info\n"; return 1; }
+    std::cerr << "  OK room created (id=" << crypto::b64_encode(ri->room_id).substr(0, 8) << "...)\n";
+
+    // 7. Send encrypted message to created room
     ChatMessagePayload msg;
     msg.nonce = crypto::gen_nonce();
-    std::memcpy(msg.room_id.data(), room_id.data(), 32);
+    std::memcpy(msg.room_id.data(), ri->room_id.data(), 32);
     msg.encrypted_body = crypto::secretbox_encrypt(
         std::span<const std::byte>((const std::byte*)"hello", 5),
         msg.nonce, session_key);
     msg.ts = std::chrono::system_clock::now();
     ws.write(asio::buffer(build_packet(PacketType::CS_SEND_MESSAGE,
         crypto::b64_encode(id.ed25519_pk), msg.serialize())));
-    std::cerr << "  OK encrypted message sent\n";
+    std::cerr << "  OK encrypted message sent to room\n";
 
     std::filesystem::remove_all(tmp);
     ws.close(websocket::close_code::normal);

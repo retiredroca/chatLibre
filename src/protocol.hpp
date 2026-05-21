@@ -29,6 +29,7 @@ enum class PacketType : uint8_t {
     CS_INVITE_USER = 0x0C,
     CS_SET_ROLE = 0x0D,
     CS_GET_HISTORY = 0x0E,
+    CS_LIST_ROOMS = 0x0F,
 
     // Server -> Client
     SC_AUTH_OK = 0x81,
@@ -146,6 +147,32 @@ struct RoomInfo {
     std::string name;
     bool encrypted;
     uint32_t member_count;
+
+    auto serialize() const -> std::vector<std::byte> {
+        std::vector<std::byte> out(32 + 4 + name.size() + 1 + 4);
+        size_t off = 0;
+        std::memcpy(&out[off], room_id.data(), 32); off += 32;
+        auto nl = to_big_endian(static_cast<uint32_t>(name.size()));
+        std::memcpy(&out[off], nl.data(), 4); off += 4;
+        std::memcpy(&out[off], name.data(), name.size()); off += name.size();
+        out[off++] = encrypted ? std::byte{1} : std::byte{0};
+        auto mc = to_big_endian(member_count);
+        std::memcpy(&out[off], mc.data(), 4);
+        return out;
+    }
+
+    static auto deserialize(std::span<const std::byte> data) -> std::optional<RoomInfo> {
+        if (data.size() < 32 + 4) return std::nullopt;
+        RoomInfo r;
+        size_t off = 0;
+        std::memcpy(r.room_id.data(), data.data(), 32); off += 32;
+        uint32_t nl = from_big_endian(data.subspan<32, 4>()); off += 4;
+        if (off + nl + 1 + 4 > data.size()) return std::nullopt;
+        r.name.assign((const char*)data.data() + off, nl); off += nl;
+        r.encrypted = data[off++] != std::byte{0};
+        r.member_count = from_big_endian(std::span<const std::byte, 4>(data.subspan(off, 4)));
+        return r;
+    }
 };
 
 struct PeerInfo {

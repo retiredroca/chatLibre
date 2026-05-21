@@ -76,13 +76,18 @@ inline auto render_gui(ClientState& state, GuiState& gui) -> void {
         ImGui::Separator();
         ImGui::InputText("New room", gui.room_name, sizeof(gui.room_name));
         if (ImGui::Button("Create") && gui.room_name[0]) {
-            state.current_room = gui.room_name;
+            client_create_room(state, gui.room_name);
             gui.room_name[0] = '\0';
         }
         ImGui::Separator();
         for (auto& room : state.room_list) {
-            if (ImGui::Selectable(room.c_str(), room == state.current_room)) {
-                state.current_room = room;
+            auto it = state.room_ids.find(room);
+            std::string rkey = (it != state.room_ids.end())
+                ? std::string((const char*)it->second.data(), 32) : "";
+            bool selected = !rkey.empty() && rkey == state.current_room;
+            if (ImGui::Selectable(room.c_str(), selected)) {
+                state.current_room = rkey;
+                state.current_room_name = room;
             }
         }
     }
@@ -93,6 +98,10 @@ inline auto render_gui(ClientState& state, GuiState& gui) -> void {
     if (!state.current_room.empty()) {
         std::lock_guard lk(state.event_mtx);
         for (auto& ev : state.events) {
+            if (ev.type == ClientState::ChatEvent::MSG_MSG) {
+                bool matches = std::string((const char*)ev.room_id.data(), 32) == state.current_room;
+                if (!matches) continue;
+            }
             switch (ev.type) {
             case ClientState::ChatEvent::MSG_MSG:
                 ImGui::Text("<%s> %s", ev.sender.c_str(), ev.text.c_str());
@@ -116,12 +125,10 @@ inline auto render_gui(ClientState& state, GuiState& gui) -> void {
     ImGui::InputTextMultiline("##msg", gui.msg_buf, sizeof(gui.msg_buf),
                                ImVec2(-1, ImGui::GetTextLineHeight() * 4));
     if (ImGui::Button("Send") && gui.msg_buf[0] && !state.current_room.empty()) {
-        std::lock_guard lk(state.event_mtx);
-        auto it = state.room_ids.find(state.current_room);
-        if (it != state.room_ids.end()) {
-            client_send_message(state, it->second,
-                std::string_view(gui.msg_buf));
-        }
+        std::array<std::byte, 32> room_id{};
+        std::memcpy(room_id.data(), state.current_room.data(), 32);
+        client_send_message(state, room_id,
+            std::string_view(gui.msg_buf));
         gui.msg_buf[0] = '\0';
     }
     ImGui::SameLine();

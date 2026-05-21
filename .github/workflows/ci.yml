@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential cmake libboost-dev libsodium-dev libopus-dev \
+          libsdl2-dev
+
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake boost libsodium opus sdl2
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release -j"$(nproc)"
+
+    - name: Start server (background)
+      if: runner.os == 'Linux'
+      run: |
+        ./build/chatlibre-server --port 9733 &
+        sleep 2
+
+    - name: Run protocol test
+      if: runner.os == 'Linux'
+      run: ./build/protocol-test
+
+    - name: Cleanup server
+      if: runner.os == 'Linux'
+      run: kill %1 || true

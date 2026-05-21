@@ -3,6 +3,23 @@
 #include "protocol.hpp"
 #include <boost/beast.hpp>
 
+// Build SC_ROOM_LIST payload from server state
+inline auto build_room_list_payload(ServerState const& state) -> std::vector<std::byte> {
+    std::vector<std::byte> out;
+    auto count = to_big_endian(static_cast<uint32_t>(state.rooms.size()));
+    out.insert(out.end(), count.begin(), count.end());
+    for (auto& [key, room] : state.rooms) {
+        RoomInfo ri;
+        std::memcpy(ri.room_id.data(), room.id.data(), 32);
+        ri.name = room.name;
+        ri.encrypted = room.encrypted;
+        ri.member_count = static_cast<uint32_t>(room.members.size());
+        auto ser = ri.serialize();
+        out.insert(out.end(), ser.begin(), ser.end());
+    }
+    return out;
+}
+
 // Dispatch incoming WebSocket packets by type
 inline void handle_packet(ServerState& state, Session& session, ParsedPacket const& pkt) {
     switch (pkt.type) {
@@ -72,7 +89,12 @@ inline void handle_packet(ServerState& state, Session& session, ParsedPacket con
         crypto::random_bytes(room.id);
         room.name = std::move(room_name);
         room.members.insert(session.id);
-        state.rooms[std::string((const char*)room.id.data(), 32)] = std::move(room);
+        auto key = std::string((const char*)room.id.data(), 32);
+        state.rooms[key] = std::move(room);
+        // Send updated room list to creator
+        auto room_list_payload = build_room_list_payload(state);
+        auto rl = build_packet(PacketType::SC_ROOM_LIST, "", room_list_payload);
+        session.ws->write(asio::buffer(rl));
         break;
     }
     case PacketType::CS_JOIN_ROOM: {
@@ -119,8 +141,15 @@ inline void handle_packet(ServerState& state, Session& session, ParsedPacket con
         }
         break;
     }
+    case PacketType::CS_LIST_ROOMS: {
+        if (!session.authenticated) break;
+        std::lock_guard lk(state.mtx);
+        auto payload = build_room_list_payload(state);
+        auto rl = build_packet(PacketType::SC_ROOM_LIST, "", payload);
+        session.ws->write(asio::buffer(rl));
+        break;
+    }
     case PacketType::CS_GET_HISTORY: {
-        // placeholder
         break;
     }
     default:

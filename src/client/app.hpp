@@ -37,9 +37,11 @@ struct ClientState {
     std::deque<ChatEvent> events;
     std::mutex event_mtx;
 
-    std::string current_room;
+    std::string current_room;       // room_id key (32-char binary string)
+    std::string current_room_name;  // display name
     std::vector<std::string> room_list;
-    std::unordered_map<std::string, std::array<std::byte, 32>> room_ids;
+    std::unordered_map<std::string, std::array<std::byte, 32>> room_ids;      // name -> room_id
+    std::unordered_map<std::string, std::string> room_id_to_name;              // room_id key -> name
     std::array<std::byte, 32> challenge{};
 
     ClientState()
